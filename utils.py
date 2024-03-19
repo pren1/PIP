@@ -8,7 +8,7 @@ import pybullet as p
 from articulate.math import rotation_matrix_to_euler_angle_np, euler_angle_to_rotation_matrix_np, euler_convert_np, \
     normalize_angle
 
-
+# Used to convert between different models
 _smpl_to_rbdl = [0, 1, 2, 9, 10, 11, 18, 19, 20, 27, 28, 29, 3, 4, 5, 12, 13, 14, 21, 22, 23, 30, 31, 32, 6, 7, 8,
                  15, 16, 17, 24, 25, 26, 36, 37, 38, 45, 46, 47, 51, 52, 53, 57, 58, 59, 63, 64, 65, 39, 40, 41,
                  48, 49, 50, 54, 55, 56, 60, 61, 62, 66, 67, 68, 33, 34, 35, 42, 43, 44]
@@ -24,6 +24,8 @@ smpl_to_rbdl_data = _smpl_to_rbdl
 def set_pose(id_robot, q):
     r"""
     Set the robot configuration.
+    id_robot is the robot,
+    q is your pose
     """
     p.resetJointStatesMultiDof(id_robot, list(range(1, p.getNumJoints(id_robot))), q[6:][_rbdl_to_bullet].reshape(-1, 1))
     glb_rot = p.getQuaternionFromEuler(euler_convert_np(q[3:6], 'zyx', 'xyz')[[2, 1, 0]])
@@ -45,7 +47,7 @@ def smpl_to_rbdl(poses, trans):
     euler_glbrots = rotation_matrix_to_euler_angle_np(poses[:, :1], 'xyz').reshape(-1, 3)
     euler_glbrots = euler_convert_np(euler_glbrots[:, [2, 1, 0]], 'xyz', 'zyx')
     qs = np.concatenate((trans, euler_glbrots, euler_poses[:, _smpl_to_rbdl]), axis=1)
-    qs[:, 3:] = normalize_angle(qs[:, 3:])
+    qs[:, 3:] = normalize_angle(qs[:, 3:]) # Make sure each angle is between -pi and pi
     return qs
 
 
@@ -64,7 +66,7 @@ def rbdl_to_smpl(qs):
     poses = np.concatenate((glbrots, poses), axis=1)
     return poses, trans
 
-
+# Normalization of the sensor readings
 def normalize_and_concat(glb_acc, glb_rot):
     glb_acc = glb_acc.view(-1, 6, 3) # first five is leaf, the last one is root
     glb_rot = glb_rot.view(-1, 6, 3, 3) # The formulas here can be found in Transpose, (22) ~ (25) formulas
