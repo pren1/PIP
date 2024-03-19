@@ -78,6 +78,7 @@ class RNNWithInit(RNN):
         super().__init__(input_size, output_size, hidden_size, num_rnn_layer, rnn_type, bidirectional, dropout)
 
         self.init_net = torch.nn.Sequential(
+            # Here the input size is output_size, makes sense!
             torch.nn.Linear(output_size, hidden_size),
             torch.nn.ReLU(),
             torch.nn.Linear(hidden_size, hidden_size * num_rnn_layer),

@@ -82,6 +82,7 @@ def process_amass():
         out_pose.append(pose[b:b + l].clone())  # N, 24, 3
         out_tran.append(tran[b:b + l].clone())  # N, 3
         out_shape.append(shape[i].clone())  # 10 # Shape has shape 10
+        # Notice that for joint, the third dimension is omitted
         out_joint.append(joint[:, :24].contiguous().clone())  # N, 24, 3 # We have many joints...
         # vert contains many points, but here the mask select the points we interested in
         out_vacc.append(_syn_acc(vert[:, vi_mask]))  # N, 6, 3 # 6 means 1 root + 5 leaf
