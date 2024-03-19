@@ -63,7 +63,10 @@ def process_amass():
 
     # align AMASS global fame with DIP
     amass_rot = torch.tensor([[[1, 0, 0], [0, 0, 1], [0, -1, 0.]]])
+    # tran.unsqueeze(-1), give an extra dimension to the tran, then we have [3,1].
+    # In this way, one can use amass_rot to convert the vector.
     tran = amass_rot.matmul(tran.unsqueeze(-1)).view_as(tran)
+    # First convert pose to rotation matrix, then rotate using amass_rot, then convert back to Euler
     pose[:, 0] = art.math.rotation_matrix_to_axis_angle(
         amass_rot.matmul(art.math.axis_angle_to_rotation_matrix(pose[:, 0])))
 
@@ -73,13 +76,16 @@ def process_amass():
     for i, l in tqdm(list(enumerate(length))):
         if l <= 12: b += l; print('\tdiscard one sequence with length', l); continue
         p = art.math.axis_angle_to_rotation_matrix(pose[b:b + l]).view(-1, 24, 3, 3)
+        # shape: this is just the model shape
+        # vert is the mesh vertex position, which are used to calculate acceleration
         grot, joint, vert = body_model.forward_kinematics(p, shape[i], tran[b:b + l], calc_mesh=True)
         out_pose.append(pose[b:b + l].clone())  # N, 24, 3
         out_tran.append(tran[b:b + l].clone())  # N, 3
-        out_shape.append(shape[i].clone())  # 10
-        out_joint.append(joint[:, :24].contiguous().clone())  # N, 24, 3
-        out_vacc.append(_syn_acc(vert[:, vi_mask]))  # N, 6, 3
-        out_vrot.append(grot[:, ji_mask])  # N, 6, 3, 3
+        out_shape.append(shape[i].clone())  # 10 # Shape has shape 10
+        out_joint.append(joint[:, :24].contiguous().clone())  # N, 24, 3 # We have many joints...
+        # vert contains many points, but here the mask select the points we interested in
+        out_vacc.append(_syn_acc(vert[:, vi_mask]))  # N, 6, 3 # 6 means 1 root + 5 leaf
+        out_vrot.append(grot[:, ji_mask])  # N, 6, 3, 3, 3*3 means this is rotation matrix
         b += l
 
     print('Saving')
@@ -112,7 +118,7 @@ def process_dipimu():
                 ori[1:].masked_scatter_(torch.isnan(ori[1:]), ori[:-1][torch.isnan(ori[1:])])
                 acc[:-1].masked_scatter_(torch.isnan(acc[:-1]), acc[1:][torch.isnan(acc[:-1])])
                 ori[:-1].masked_scatter_(torch.isnan(ori[:-1]), ori[1:][torch.isnan(ori[:-1])])
-
+            # Any reason of removing the beginning and ending elements?
             acc, ori, pose = acc[6:-6], ori[6:-6], pose[6:-6]
             if torch.isnan(acc).sum() == 0 and torch.isnan(ori).sum() == 0 and torch.isnan(pose).sum() == 0:
                 accs.append(acc.clone())
@@ -162,6 +168,7 @@ def process_totalcapture():
                 line = f.readline()
                 pos.append(torch.tensor([[float(_) for _ in p.split(' ')] for p in line.split('\t')[:-1]]))
             pos = torch.stack(pos[:-1])[:, index] * inches_to_meters
+            # Add - sign to the first and last element of pos
             pos[:, :, 0].neg_()
             pos[:, :, 2].neg_()
             trans.append(pos[:, 2] - pos[:1, 2])   # N, 3
@@ -179,6 +186,8 @@ def process_totalcapture():
         vacc = _syn_acc(vert[:, vi_mask])
         for imu_id in range(6):
             for i in range(3):
+                # Calculate the difference between acceleration reading and the
+                # acceleration from vertex mesh, use it as a bias to be removed.
                 d = -iacc[:, imu_id, i].mean() + vacc[:, imu_id, i].mean()
                 iacc[:, imu_id, i] += d
 
