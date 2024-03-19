@@ -41,6 +41,7 @@ def smpl_to_rbdl(poses, trans):
     poses = np.array(poses).reshape(-1, 24, 3, 3)
     trans = np.array(trans).reshape(-1, 3)
     euler_poses = rotation_matrix_to_euler_angle_np(poses[:, 1:], 'XYZ').reshape(-1, 69)
+    # glbrots means global rotations
     euler_glbrots = rotation_matrix_to_euler_angle_np(poses[:, :1], 'xyz').reshape(-1, 3)
     euler_glbrots = euler_convert_np(euler_glbrots[:, [2, 1, 0]], 'xyz', 'zyx')
     qs = np.concatenate((trans, euler_glbrots, euler_poses[:, _smpl_to_rbdl]), axis=1)
@@ -65,8 +66,8 @@ def rbdl_to_smpl(qs):
 
 
 def normalize_and_concat(glb_acc, glb_rot):
-    glb_acc = glb_acc.view(-1, 6, 3)
-    glb_rot = glb_rot.view(-1, 6, 3, 3)
+    glb_acc = glb_acc.view(-1, 6, 3) # first five is leaf, the last one is root
+    glb_rot = glb_rot.view(-1, 6, 3, 3) # The formulas here can be found in Transpose, (22) ~ (25) formulas
     acc = torch.cat((glb_acc[:, :5] - glb_acc[:, 5:], glb_acc[:, 5:]), dim=1).bmm(glb_rot[:, -1])
     ori = torch.cat((glb_rot[:, 5:].transpose(2, 3).matmul(glb_rot[:, :5]), glb_rot[:, 5:]), dim=1)
     data = torch.cat((acc.flatten(1), ori.flatten(1)), dim=1)
