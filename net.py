@@ -107,10 +107,10 @@ class PIP(torch.nn.Module):
         # Prepare input by process the data
         x = (normalize_and_concat(glb_acc, glb_rot), lj_init, jvel_init)
         leaf_joint, full_joint, global_6d_pose, joint_velocity, contact = [_[0] for _ in self.forward([x])]
-        import pdb
-        # TODO: Question, why [0] here? Why you got the first element here? Is that the batch size?
-        # TODO: What's the shape of glb_rot
-        pdb.set_trace()
+        # Question, why [0] here? Why you got the first element here?
+        # It's just an extra dimension
+        # What's the shape of glb_rot
+        # glb_rot.view(-1, 6, 3, 3)[:, -1] means you get the last root rotation matrix from 6. It's second dimension!
         pose = self._reduced_glb_6d_to_full_local_mat(glb_rot.view(-1, 6, 3, 3)[:, -1], global_6d_pose)
         joint_velocity = joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale
         pose_opt, tran_opt = [], []

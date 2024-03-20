@@ -1,3 +1,57 @@
+# Personal Installation Suggestions
+
+Necessary Installation
+```
+sudo apt update
+sudo apt upgrade
+sudo apt install cmake
+sudo apt install libeigen3-dev
+sudo apt-get install build-essential
+sudo apt install cmake-curses-gui
+sudo apt install cython3 python3-numpy python3-scipy python3-matplotlib
+sudo apt install libboost-all-dev
+```
+
+Then install additional python packages via pip
+```
+sudo apt install python3-pip
+pip3 install torch
+pip3 install chumpy vctoolkit open3d pybullet qpsolvers cvxopt
+pip install --upgrade numpy
+pip install --upgrade scipy
+pip install --upgrade pyyaml
+pip3 install numpy==1.23.1
+pip install qpsolvers[quadprog]
+```
+
+## Install rbdl on Linux
+### Git Clone from rbdl
+```
+git clone --recursive https://github.com/rbdl/rbdl
+```
+### make rbdl
+```
+mkdir rbdl-build
+cd rbdl-build/
+cmake -D CMAKE_BUILD_TYPE=Release ../rbdl
+ccmake ../rbdl
+```
+Then, you select the following choices:
+```
+RBDL_BUILD_ADDON_URDFREADER: ON
+RBDL_BUILD_PYTHON_WRAPPER: ON
+```
+Push 'c' after finish, then push 'g'. Then run make:
+```
+make
+```
+Wait until done, then add the library to python
+```
+export PYTHONPATH=$PYTHONPATH:/home/ubuntu/rbdl-build/python
+```
+
+Then you are done, simply run evaluation.py
+
 # PIP
 
 Code for our CVPR 2022 [paper](https://arxiv.org/abs/2203.08528) "Physical Inertial Poser (PIP): Physics-aware Real-time Human Motion Tracking from Sparse Inertial Sensors". This repository contains the system implementation and evaluation.  See [Project Page](https://xinyu-yi.github.io/PIP/).
