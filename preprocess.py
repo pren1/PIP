@@ -201,4 +201,4 @@ def process_totalcapture():
 if __name__ == '__main__':
     # process_amass()
     process_dipimu()
-    process_totalcapture()
+    # process_totalcapture()

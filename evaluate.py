@@ -201,8 +201,8 @@ if __name__ == '__main__':
     full_pose_evaluator = FullPoseEvaluator()
 
     # Note: to evaluate Absolute Jitter Error, use full_pose_evaluator
-    print('\n')
-    evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
+    # print('\n')
+    # evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
 
     print('\n')
     evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)

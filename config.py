@@ -24,7 +24,7 @@ class paths:
 
     result_dir = 'data/result'                      # output directory for the evaluation results
 
-    smpl_file = 'models/SMPL_male.pkl'              # official SMPL model path
+    smpl_file = 'models/basicmodel_m_lbs_10_207_0_v1.0.0.pkl'              # official SMPL model path
     physics_model_file = 'models/physics.urdf'      # physics body model path
     plane_file = 'models/plane.urdf'                # (for debug) path to plane.urdf    Please put plane.obj next to it.
     weights_file = 'data/weights.pt'                # network weight file
