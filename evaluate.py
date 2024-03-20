@@ -21,6 +21,7 @@ plt.ylabel('Mean translation error (m)', fontsize=16)
 plt.title('Cumulative Translation Error', fontsize=18)
 
 
+# sudo scp -r -i "my_new_key.pem" /Users/renpeng/Documents/GitHub/PIP ubuntu@ec2-54-241-110-179.us-west-1.compute.amazonaws.com:/home/ubuntu/
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -104,7 +105,12 @@ def run_pipeline(net, data_dir, sequence_ids=None):
     Save the estimated [Pose[num_frames, 24, 3, 3], Tran[num_frames, 3]] for each of `sequence_ids`.
     """
     print('Loading imu data from "%s"' % data_dir)
-    accs, rots, poses, _ = torch.load(os.path.join(data_dir, 'test.pt')).values()
+    if data_dir == paths.dipimu_dir:
+        accs, rots, poses, _ = torch.load(os.path.join(data_dir, 'test.pt')).values()
+    else:
+        # Here we consider the TotalCapture
+        accs, rots, poses, _, _ = torch.load(os.path.join(data_dir, 'test.pt')).values()
+
     init_poses = [art.math.axis_angle_to_rotation_matrix(_[0]) for _ in poses]
 
     data_name = os.path.basename(data_dir)
@@ -129,8 +135,12 @@ def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator
     result_dir = os.path.join(paths.result_dir, data_name, net.name)
     print_title('Evaluating "%s" on "%s"' % (net.name, data_name))
 
-    _, _, pose_t_all, tran_t_all = torch.load(os.path.join(data_dir, 'test.pt')).values()
-
+    if data_dir == paths.dipimu_dir:
+        _, _, pose_t_all, tran_t_all = torch.load(os.path.join(data_dir, 'test.pt')).values()
+    else:
+        # Here we consider the TotalCapture
+        _, _, pose_t_all, tran_t_all, _ = torch.load(os.path.join(data_dir, 'test.pt')).values()
+        pose_t_all = [tensor.view(-1, 72) for tensor in pose_t_all]
     if sequence_ids is None:
         sequence_ids = list(range(len(pose_t_all)))
     if flush_cache and os.path.exists(result_dir):
@@ -146,6 +156,8 @@ def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator
     tran_errors = {window_size: [] for window_size in list(range(1, 8))}
     zmp_errors = []
     for i in tqdm.tqdm(sequence_ids):
+        # You may want to skip 7 and 18 if you are working on the totalCapture on a 8GB Ram server
+        # Otherwise it is killed~
         result = torch.load(os.path.join(result_dir, '%d.pt' % i))
         pose_p, tran_p = result[0], result[1]
         pose_t, tran_t = pose_t_all[i], tran_t_all[i]
@@ -202,7 +214,7 @@ if __name__ == '__main__':
 
     # Note: to evaluate Absolute Jitter Error, use full_pose_evaluator
     # print('\n')
-    # evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
+    evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
 
-    print('\n')
-    evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)
+    # print('\n')
+    # evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)
