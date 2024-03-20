@@ -51,7 +51,12 @@ class RNN(torch.nn.Module):
         """
         length = [_.shape[0] for _ in x]
         x = self.dropout(relu(self.linear1(pad_sequence(x))))
+
+        # Output shape of self.rnn(pack_padded_sequence(x, length, enforce_sorted=False), init) is:
+        # [2, 1, 256], 1 means only 1 sequence is here~, 2 means there are h and c
         x = self.rnn(pack_padded_sequence(x, length, enforce_sorted=False), init)[0]
+        # pad_packed_sequence(x)[0] has shape:
+        # [1176, 1, 256], [0] picks the data from padded sequences
         x = self.linear2(pad_packed_sequence(x)[0])
         return [x[:l, i].clone() for i, l in enumerate(length)]
 

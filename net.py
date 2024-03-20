@@ -14,21 +14,36 @@ class PIP(torch.nn.Module):
         super(PIP, self).__init__()
         # This class is defined by the author,
         # It takes extra input to calculate initial states using a fully-connected layer inside
+
+        # First input dimension is 72, because 6 sensor acceleration, each has 3d. 3 * 6 = 18
+        # Then you got 6 sensor with each 3*3 rotation matrix, then you have: 6 * 9 = 54
+        # 54 + 18 = 72
+
+        # Here the output is joint position of the leaf
         self.rnn1 = RNNWithInit(input_size=72,
                                 output_size=joint_set.n_leaf * 3,
                                 hidden_size=self.n_hidden,
                                 num_rnn_layer=2,
                                 dropout=0.4)
+
+        # Then the input & output of the above model are used as input here.
+        # Output is 24 joint positions, each has 3 dimension
         self.rnn2 = RNN(input_size=72 + joint_set.n_leaf * 3,
                         output_size=joint_set.n_full * 3,
                         hidden_size=self.n_hidden,
                         num_rnn_layer=2,
                         dropout=0.4)
+
+        # Then the input & output of the above model, used again as input here...
+        # Output is the joint rotations, in 6d version. You should (I think) Use pose to get the corresponding
+        # rotations
         self.rnn3 = RNN(input_size=72 + joint_set.n_full * 3,
                         output_size=joint_set.n_reduced * 6,
                         hidden_size=self.n_hidden,
                         num_rnn_layer=2,
                         dropout=0.4)
+
+        # Then, also this model it predicts
         self.rnn4 = RNNWithInit(input_size=72 + joint_set.n_full * 3,
                                 output_size=24 * 3,
                                 hidden_size=self.n_hidden,
