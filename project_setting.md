@@ -1,5 +1,7 @@
 # Personal Installation Guide
 
+#### This recipe works for ubuntu 22.04 ✅
+ 
 This guide outlines the necessary steps to set up a development environment tailored for scientific computing and robotics development on Linux. Follow these instructions to ensure you have all the necessary tools and libraries installed.
 
 ## Initial System Update and Package Installation
@@ -13,12 +15,12 @@ sudo apt update && sudo apt upgrade -y
 
 Install cmake and essential C/C++ development tools
 ```
-sudo apt install -y cmake build-essential cmake-curses-gui libeigen3-dev libboost-all-dev
+sudo apt install -y cmake build-essential cmake-curses-gui libeigen3-dev libboost-all-dev libgl1
 ```
 
 Install Python development tools and essential scientific libraries
 ```
-sudo apt install -y cython3 python3-pip python3-numpy python3-scipy python3-matplotlib
+sudo apt install -y cython3 python3-pip
 ```
 
 ## Python Package Installation via pip
@@ -35,14 +37,9 @@ Install additional scientific and robotics development packages
 pip3 install chumpy vctoolkit open3d pybullet qpsolvers cvxopt
 ```
 
-Upgrade numpy, scipy, and pyyaml to their latest versions
+Also install other packages
 ```
-pip3 install --upgrade numpy scipy pyyaml
-```
-
-Install a specific version of numpy and additional dependencies for qpsolvers
-```
-pip3 install numpy==1.23.1 qpsolvers[quadprog]
+pip3 install numpy==1.23.1 scipy pyyaml qpsolvers[quadprog]
 ```
 
 ## Installing rbdl from Source
@@ -82,7 +79,7 @@ RBDL_BUILD_PYTHON_WRAPPER to ON
 ```
 Then, press 'c' to configure, followed by 'g' to generate and exit
 
-Compile the project
+Then compile the project
 ```
 make
 ```
@@ -93,6 +90,11 @@ Add the `rbdl` Python library to your `PYTHONPATH` to make it accessible to your
 
 ```bash
 export PYTHONPATH=$PYTHONPATH:/home/ubuntu/rbdl-build/python
+```
+
+## Upload Project
+```
+sudo scp -r -i "my_new_key.pem" /Users/xxxx/Documents/GitHub/PIP ubuntu@ec2-54-219-201-246.us-west-1.compute.amazonaws.com:/home/ubuntu/
 ```
 
 ## Usage
