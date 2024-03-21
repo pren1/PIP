@@ -123,7 +123,24 @@ def run_pipeline(net, data_dir, sequence_ids=None):
     for i in tqdm.tqdm(sequence_ids):
         torch.save(net.predict(accs[i], rots[i], init_poses[i]), os.path.join(output_dir, '%d.pt' % i))
 
+def resave_estimated_results(data_dir):
+    _, _, pose_t_all, tran_t_all = torch.load(os.path.join(data_dir, 'test.pt')).values()
 
+    data_name = os.path.basename(data_dir)
+    result_dir = os.path.join(paths.result_dir, data_name, net.name)
+    sequence_ids = list(range(len(pose_t_all)))
+    pose_p_list = []
+    tran_p_list = []
+
+    for i in tqdm.tqdm(sequence_ids):
+        result = torch.load(os.path.join(result_dir, '%d.pt' % i))
+        pose_p, tran_p = result[0], result[1]
+        pose_p = art.math.rotation_matrix_to_axis_angle(pose_p).view(-1, 72)
+        pose_p_list.append(pose_p)
+        tran_p_list.append(tran_p)
+
+    torch.save({'acc': [], 'ori': [], 'pose': pose_p_list, 'tran': tran_p_list}, os.path.join(paths.dipimu_dir, 'test_p.pt'))
+    print("Data saved!")
 def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator=ReducedPoseEvaluator(),
              evaluate_pose=False, evaluate_tran=False, evaluate_zmp=False):
     r"""
@@ -213,12 +230,13 @@ def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator
 
 if __name__ == '__main__':
     net = PIP()
-    reduced_pose_evaluator = ReducedPoseEvaluator()
-    full_pose_evaluator = FullPoseEvaluator()
+    resave_estimated_results(paths.dipimu_dir)
+    # reduced_pose_evaluator = ReducedPoseEvaluator()
+    # full_pose_evaluator = FullPoseEvaluator()
 
     # Note: to evaluate Absolute Jitter Error, use full_pose_evaluator
     # print('\n')
     # evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
 
     # print('\n')
-    evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)
+    # evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)
