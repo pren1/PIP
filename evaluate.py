@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import articulate as art
 from articulate.utils.rbdl import *
 from net import PIP
-
+import pdb
 
 torch.set_printoptions(sci_mode=False)
 plt.rcParams['font.family'] = 'sans-serif'
@@ -20,8 +20,7 @@ plt.xlabel('Real travelled distance (m)', fontsize=16)
 plt.ylabel('Mean translation error (m)', fontsize=16)
 plt.title('Cumulative Translation Error', fontsize=18)
 
-
-# sudo scp -r -i "my_new_key.pem" /Users/renpeng/Documents/GitHub/PIP ubuntu@ec2-54-241-110-179.us-west-1.compute.amazonaws.com:/home/ubuntu/
+# sudo scp -r -i "my_new_key.pem" /Users/renpeng/Documents/GitHub/PIP ubuntu@ec2-54-193-201-186.us-west-1.compute.amazonaws.com:/home/ubuntu/
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -150,6 +149,8 @@ def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator
     cached_ids = [i for i in sequence_ids if os.path.exists(os.path.join(result_dir, '%d.pt' % i))]
     print('Cached ids: %s\nMissing ids: %s' % (cached_ids, missing_ids))
     if len(missing_ids) > 0:
+        # Remember to reinitialize! Otherwise the performance would downgrade...
+        net = PIP()
         run_pipeline(net, data_dir, missing_ids)
 
     pose_errors = []
@@ -158,6 +159,9 @@ def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator
     for i in tqdm.tqdm(sequence_ids):
         # You may want to skip 7 and 18 if you are working on the totalCapture on a 8GB Ram server
         # Otherwise it is killed~
+        if (i == 7 or i == 18) and data_dir == paths.totalcapture_dir:
+            continue
+
         result = torch.load(os.path.join(result_dir, '%d.pt' % i))
         pose_p, tran_p = result[0], result[1]
         pose_t, tran_t = pose_t_all[i], tran_t_all[i]
@@ -214,7 +218,7 @@ if __name__ == '__main__':
 
     # Note: to evaluate Absolute Jitter Error, use full_pose_evaluator
     # print('\n')
-    evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
+    # evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
 
     # print('\n')
-    # evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)
+    evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)

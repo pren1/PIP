@@ -5,6 +5,7 @@ from config import *
 from utils import *
 from dynamics import PhysicsOptimizer
 import torch
+import pdb
 
 class PIP(torch.nn.Module):
     name = 'PIP'
@@ -12,6 +13,8 @@ class PIP(torch.nn.Module):
 
     def __init__(self):
         super(PIP, self).__init__()
+        self.simplified = True
+
         # This class is defined by the author,
         # It takes extra input to calculate initial states using a fully-connected layer inside
 
@@ -24,6 +27,7 @@ class PIP(torch.nn.Module):
                                 output_size=joint_set.n_leaf * 3,
                                 hidden_size=self.n_hidden,
                                 num_rnn_layer=2,
+                                simplified=self.simplified,
                                 dropout=0.4)
 
         # Then the input & output of the above model are used as input here.
@@ -32,6 +36,7 @@ class PIP(torch.nn.Module):
                         output_size=joint_set.n_full * 3,
                         hidden_size=self.n_hidden,
                         num_rnn_layer=2,
+                        simplified=self.simplified,
                         dropout=0.4)
 
         # Then the input & output of the above model, used again as input here...
@@ -41,6 +46,7 @@ class PIP(torch.nn.Module):
                         output_size=joint_set.n_reduced * 6,
                         hidden_size=self.n_hidden,
                         num_rnn_layer=2,
+                        simplified=self.simplified,
                         dropout=0.4)
 
         # Then, also this model it predicts
@@ -48,11 +54,13 @@ class PIP(torch.nn.Module):
                                 output_size=24 * 3,
                                 hidden_size=self.n_hidden,
                                 num_rnn_layer=2,
+                                simplified=self.simplified,
                                 dropout=0.4)
         self.rnn5 = RNN(input_size=72 + joint_set.n_full * 3,
                         output_size=2,
                         hidden_size=64,
                         num_rnn_layer=2,
+                        simplified=self.simplified,
                         dropout=0.4)
 
         body_model = art.ParametricModel(paths.smpl_file)
@@ -76,6 +84,39 @@ class PIP(torch.nn.Module):
         pose[:, 0] = root_rotation.view(-1, 3, 3)
         return pose
 
+    def step_forward(self, x):
+        x, lj_init, jvel_init = list(x[0])
+
+        leaf_joint_list = []
+        full_joint_list = []
+        global_6d_pose_list = []
+        joint_velocity_list = []
+        contact_list = []
+        # Iterate over each frame
+        for i, frame in enumerate(x):
+            # frame_reshaped = frame.unsqueeze(0).unsqueeze(0)  # Now the shape is [1, 1, 72]
+            leaf_joint = self.rnn1(list([frame, lj_init]))
+            leaf_joint_list.append(leaf_joint)
+
+            full_joint = self.rnn2(torch.cat((leaf_joint, frame), dim=0))
+            full_joint_list.append(full_joint)
+
+            global_6d_pose = self.rnn3(torch.cat((full_joint, frame), dim=0))
+            global_6d_pose_list.append(global_6d_pose)
+            # Linear velocities
+            joint_velocity = self.rnn4(list([torch.cat((full_joint, frame), dim=0), jvel_init]))
+            joint_velocity_list.append(joint_velocity)
+            # Foot ground contact probability
+            contact = self.rnn5(torch.cat((full_joint, frame), dim=0))
+            contact_list.append(contact)
+
+        leaf_joint = torch.stack(leaf_joint_list)
+        full_joint = torch.stack(full_joint_list)
+        global_6d_pose = torch.stack(global_6d_pose_list)
+        joint_velocity = torch.stack(joint_velocity_list)
+        contact = torch.stack(contact_list)
+        return [leaf_joint], [full_joint], [global_6d_pose], [joint_velocity], [contact]
+
     def forward(self, x):
         r"""
         Forward.
@@ -83,20 +124,23 @@ class PIP(torch.nn.Module):
         :param x: A list in length [batch_size] which contains 3-tuple
                   (tensor [num_frames, 72], tensor [15], tensor [72]).
         """
-        # Extract three list from x using zip(*x)
-        x, lj_init, jvel_init = list(zip(*x))
-        # All leaf positions
-        # lj_init is used by the fully-connected network inside to calculate initial states
-        leaf_joint = self.rnn1(list(zip(x, lj_init)))
-        # All joint positions
-        full_joint = self.rnn2([torch.cat(_, dim=-1) for _ in zip(leaf_joint, x)])
-        # Global rotations
-        global_6d_pose = self.rnn3([torch.cat(_, dim=-1) for _ in zip(full_joint, x)])
-        # Linear velocities
-        joint_velocity = self.rnn4(list(zip([torch.cat(_, dim=-1) for _ in zip(full_joint, x)], jvel_init)))
-        # Foot ground contact probability
-        contact = self.rnn5([torch.cat(_, dim=-1) for _ in zip(full_joint, x)])
-        return leaf_joint, full_joint, global_6d_pose, joint_velocity, contact
+        if self.simplified:
+            return self.step_forward(x)
+        else:
+            # Extract three list from x using zip(*x)
+            x, lj_init, jvel_init = list(zip(*x))
+            # All leaf positions
+            # lj_init is used by the fully-connected network inside to calculate initial states
+            leaf_joint = self.rnn1(list(zip(x, lj_init)))
+            # All joint positions
+            full_joint = self.rnn2([torch.cat(_, dim=-1) for _ in zip(leaf_joint, x)])
+            # Global rotations
+            global_6d_pose = self.rnn3([torch.cat(_, dim=-1) for _ in zip(full_joint, x)])
+            # Linear velocities
+            joint_velocity = self.rnn4(list(zip([torch.cat(_, dim=-1) for _ in zip(full_joint, x)], jvel_init)))
+            # Foot ground contact probability
+            contact = self.rnn5([torch.cat(_, dim=-1) for _ in zip(full_joint, x)])
+            return leaf_joint, full_joint, global_6d_pose, joint_velocity, contact
 
     @torch.no_grad()
     def predict(self, glb_acc, glb_rot, init_pose):
