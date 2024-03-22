@@ -57,9 +57,10 @@ def visualize_smpl_with_tensors(smpl_model_path, pose_t_all, tran_t_all):
     vis.run()  # Keep the window open until manually closed
     vis.destroy_window()
 # Assuming your pose_t_all and tran_t_all are loaded as NumPy arrays
-_, _, pose_t_all_g, tran_t_all_g = torch.load(os.path.join(paths.dipimu_dir, 'test.pt')).values()
-_, _, pose_t_all, tran_t_all = torch.load(os.path.join(paths.dipimu_dir, 'test_p.pt')).values()
+_, _, pose_t_all_g, tran_t_all_g = torch.load(os.path.join(paths.dipimu_dir, 'test_case.pt')).values()
+# _, _, pose_t_all_g, tran_t_all_g = torch.load(os.path.join(paths.dipimu_dir, 'test.pt')).values()
+# _, _, pose_t_all, tran_t_all = torch.load(os.path.join(paths.dipimu_dir, 'test_p.pt')).values()
 # Example usage
 # Make sure to replace 'smpl_model_path' with the path to your SMPL model file
 # and ensure pose_t_all and tran_t_all are loaded tensors with your pose and translation data
-visualize_smpl_with_tensors(smpl_model_path, pose_t_all_g[1], tran_t_all_g[1])
+visualize_smpl_with_tensors(smpl_model_path, pose_t_all_g[0], tran_t_all_g[0])

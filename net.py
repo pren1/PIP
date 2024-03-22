@@ -13,7 +13,7 @@ class PIP(torch.nn.Module):
 
     def __init__(self):
         super(PIP, self).__init__()
-        self.simplified = True
+        self.simplified = False
 
         # This class is defined by the author,
         # It takes extra input to calculate initial states using a fully-connected layer inside

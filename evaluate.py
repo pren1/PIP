@@ -10,6 +10,7 @@ import articulate as art
 from articulate.utils.rbdl import *
 from net import PIP
 import pdb
+from test_data_processor import combine_all
 
 torch.set_printoptions(sci_mode=False)
 plt.rcParams['font.family'] = 'sans-serif'
@@ -20,7 +21,8 @@ plt.xlabel('Real travelled distance (m)', fontsize=16)
 plt.ylabel('Mean translation error (m)', fontsize=16)
 plt.title('Cumulative Translation Error', fontsize=18)
 
-# sudo scp -r -i "my_new_key.pem" /Users/renpeng/Documents/GitHub/PIP ubuntu@ec2-54-193-201-186.us-west-1.compute.amazonaws.com:/home/ubuntu/
+# sudo scp -r -i "my_new_key.pem" /Users/renpeng/Documents/GitHub/PIP ubuntu@ec2-54-183-34-215.us-west-1.compute.amazonaws.com:/home/ubuntu/
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -97,6 +99,18 @@ def evaluate_zmp_distance(poses, trans, fps=60, foot_radius=0.1):
 
     return sum(dists) / len(dists)
 
+def test_case(net):
+    pose_p_list = []
+    tran_p_list = []
+    zeros_aM, eye_RMB, init_pose = combine_all()
+    result = net.predict(zeros_aM, eye_RMB, init_pose)
+    pose_p, tran_p = result[0], result[1]
+    pose_p = art.math.rotation_matrix_to_axis_angle(pose_p).view(-1, 72)
+    pose_p_list.append(pose_p)
+    tran_p_list.append(tran_p)
+    torch.save({'acc': [], 'ori': [], 'pose': pose_p_list, 'tran': tran_p_list},
+           os.path.join(paths.dipimu_dir, 'test_case.pt'))
+    print("Data saved!")
 
 def run_pipeline(net, data_dir, sequence_ids=None):
     r"""
@@ -230,7 +244,8 @@ def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator
 
 if __name__ == '__main__':
     net = PIP()
-    resave_estimated_results(paths.dipimu_dir)
+    test_case(net)
+    # resave_estimated_results(paths.dipimu_dir)
     # reduced_pose_evaluator = ReducedPoseEvaluator()
     # full_pose_evaluator = FullPoseEvaluator()
 
