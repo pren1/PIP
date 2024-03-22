@@ -7,7 +7,7 @@ import torch
 def return_data():
     # Replace 'your_file.csv' with the path to your CSV file
     # file_path = "data/test_data/trail_9_RoNIN_input.csv"
-    file_path = "data/test_data/trail_11_RoNIN_input.csv"
+    file_path = "data/test_data/trail_12_RoNIN_input.csv"
 
     # Define column names based on the structure you provided
     column_names = ['gyro_x', 'gyro_y', 'gyro_z',
@@ -49,7 +49,8 @@ def return_data():
 
 def tpose_calibration(rotation_matrix):
     RSI = rotation_matrix[0].view(3, 3).t()
-    RMI = torch.tensor([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]],dtype=torch.float64).mm(RSI)
+    # RMI = torch.tensor([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]],dtype=torch.float64).mm(RSI)
+    RMI = torch.tensor([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]], dtype=torch.float64).mm(RSI)
     print(RMI)
     RIS = rotation_matrix[1]
     RSB = RMI.matmul(RIS).t()
