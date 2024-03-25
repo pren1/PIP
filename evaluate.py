@@ -103,13 +103,13 @@ def test_case(net):
     pose_p_list = []
     tran_p_list = []
     zeros_aM, eye_RMB, init_pose = combine_all()
-    result = net.predict(zeros_aM, eye_RMB, init_pose)
+    result = net.single_step_predict(zeros_aM, eye_RMB, init_pose)
     pose_p, tran_p = result[0], result[1]
     pose_p = art.math.rotation_matrix_to_axis_angle(pose_p).view(-1, 72)
     pose_p_list.append(pose_p)
     tran_p_list.append(tran_p)
     torch.save({'acc': [], 'ori': [], 'pose': pose_p_list, 'tran': tran_p_list},
-           os.path.join(paths.dipimu_dir, 'test_case.pt'))
+           os.path.join(paths.dipimu_dir, 'test_case_3.pt'))
     print("Data saved!")
 
 def run_pipeline(net, data_dir, sequence_ids=None):
