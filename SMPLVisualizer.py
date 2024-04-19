@@ -59,15 +59,15 @@ class SMPLVisualizer():
         self.vis.run()  # Keep the window open until manually closed
         self.vis.destroy_window()
 # Assuming your pose_t_all and tran_t_all are loaded as NumPy arrays
-_, _, pose_t_all_g, tran_t_all_g = torch.load(os.path.join(paths.dipimu_dir, 'test_case_4.pt')).values()
+# _, _, pose_t_all_g, tran_t_all_g = torch.load(os.path.join(paths.dipimu_dir, 'test_case_4.pt')).values()
 
-SV = SMPLVisualizer()
-for i in range(len(pose_t_all_g[0])):
-    pose = pose_t_all_g[0][i]
-    trans = tran_t_all_g[0][i]
-    SV.visualize_smpl_with_tensors(pose, trans)
-
-SV.post_vis_act()
+# SV = SMPLVisualizer()
+# for i in range(len(pose_t_all_g[0])):
+#     pose = pose_t_all_g[0][i]
+#     trans = tran_t_all_g[0][i]
+#     SV.visualize_smpl_with_tensors(pose, trans)
+#
+# SV.post_vis_act()
 
 
 # _, _, pose_t_all_g, tran_t_all_g = torch.load(os.path.join(paths.dipimu_dir, 'test.pt')).values()

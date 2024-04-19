@@ -15,6 +15,8 @@ class PIP(torch.nn.Module):
         super(PIP, self).__init__()
         self.simplified = True
         self.is_initialized = False # Determine whether the model is initialized
+        self.lj_init = None
+        self.jvel_init = None
 
         # This class is defined by the author,
         # It takes extra input to calculate initial states using a fully-connected layer inside
@@ -229,8 +231,7 @@ class PIP(torch.nn.Module):
 
     @torch.no_grad()
     def new_data_available(self, glb_acc, glb_rot, init_pose):
-        lj_init = None
-        jvel_init = None
+
         if not self.is_initialized:
             self.is_initialized = True
             self.dynamics_optimizer.reset_states()
@@ -238,18 +239,20 @@ class PIP(torch.nn.Module):
             init_pose[0, 0] = torch.eye(3)
             # self.forward_kinematics(init_pose)[1], this returns the joint position
             # Then we select the leaf points at index 0 (actually the first dim is always 1, as we can see in init_pose)
-            lj_init = self.forward_kinematics(init_pose)[1][0, joint_set.leaf].view(-1)
+            self.lj_init = self.forward_kinematics(init_pose)[1][0, joint_set.leaf].view(-1)
             # Seems that for velocity initialization, you got all zeros as input...
-            jvel_init = torch.zeros(24 * 3)
+            self.jvel_init = torch.zeros(24 * 3)
 
-        acc = glb_acc.unsqueeze(0)
-        rot = glb_rot.unsqueeze(0)
+        # acc = glb_acc.unsqueeze(0)
+        # rot = glb_rot.unsqueeze(0)
+        acc = glb_acc
+        rot = glb_rot
         frame = normalize_and_concat(acc, rot).squeeze()
-        leaf_joint = self.rnn1(list([frame, lj_init]))
+        leaf_joint = self.rnn1(list([frame, self.lj_init]))
         full_joint = self.rnn2(torch.cat((leaf_joint, frame), dim=0))
         global_6d_pose = self.rnn3(torch.cat((full_joint, frame), dim=0))
         # Linear velocities
-        joint_velocity = self.rnn4(list([torch.cat((full_joint, frame), dim=0), jvel_init]))
+        joint_velocity = self.rnn4(list([torch.cat((full_joint, frame), dim=0), self.jvel_init]))
         # Foot ground contact probability
         contact = self.rnn5(torch.cat((full_joint, frame), dim=0))
         # What's the shape of glb_rot

@@ -11,7 +11,7 @@ from articulate.utils.rbdl import *
 from net import PIP
 import pdb
 # from test_data_processor import combine_all
-from Online_Process import combine_all
+from Online_Process import *
 from SMPLVisualizer import SMPLVisualizer
 
 torch.set_printoptions(sci_mode=False)
@@ -245,8 +245,29 @@ def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator
 
 
 if __name__ == '__main__':
+    'load data'
+    root_path = "/Users/pren1/PycharmProjects/Socket_handler/data/"
+    acceleration_path = root_path + "total_acceleration_3000.pkl"
+    rotation_path = root_path + "total_orientation_3000.pkl"
+
+    acceleration_data = load_pickle(acceleration_path)
+    rotation_data = load_pickle(rotation_path)
+    OP = OnlineProcess()
     net = PIP()
-    test_case(net)
+    SV = SMPLVisualizer()
+
+    for i in range(len(acceleration_data)):
+        cur_acceleration = acceleration_data[i]
+        cur_rotation = rotation_data[i]
+
+        zeros_aM, eye_RMB = OP.new_data_available(cur_acceleration, cur_rotation)
+        pose, trans = net.new_data_available(zeros_aM, eye_RMB, OP.init_pose)
+        pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
+        SV.visualize_smpl_with_tensors(pose, trans)
+
+    SV.post_vis_act()
+
+    # test_case(net)
     # resave_estimated_results(paths.dipimu_dir)
     # reduced_pose_evaluator = ReducedPoseEvaluator()
     # full_pose_evaluator = FullPoseEvaluator()
