@@ -12,6 +12,7 @@ from net import PIP
 import pdb
 # from test_data_processor import combine_all
 from Online_Process import combine_all
+from SMPLVisualizer import SMPLVisualizer
 
 torch.set_printoptions(sci_mode=False)
 plt.rcParams['font.family'] = 'sans-serif'
