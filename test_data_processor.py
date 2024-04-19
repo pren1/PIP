@@ -14,7 +14,8 @@ def load_pickle(file_path):
 
 def q_to_rot(quaternion):
     # 使用scipy库中的Rotation类来处理四元数
-    r = Rotation.from_quat(quaternion)
+    w,x,y,z = quaternion
+    r = Rotation.from_quat([x,y,z,w])
 
     # 将四元数转换为旋转矩阵
     rotation_matrix = r.as_matrix()
@@ -34,10 +35,11 @@ def return_data():
     rotation_matrix = []
     for quat in rotation_data:
         rotation_matrix.append(q_to_rot(quat[0]))
-
     rotation_matrix = torch.tensor(rotation_matrix)
     acceleration_rotated = torch.tensor(acceleration_data, dtype=torch.float64)
     acceleration_rotated = acceleration_rotated.view(-1, 3)
+    # acceleration_rotated = np.einsum('ijk,ik->ij', rotation_matrix, acceleration_rotated)
+    # acceleration_rotated = torch.tensor(acceleration_rotated, dtype=torch.float64)
     return acceleration_rotated, rotation_matrix
     pdb.set_trace()
 
@@ -83,8 +85,10 @@ def return_data():
 
 def tpose_calibration(rotation_matrix):
     RSI = rotation_matrix[0].view(3, 3).t()
-    # RMI = torch.tensor([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]],dtype=torch.float64).mm(RSI)
-    RMI = torch.tensor([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]], dtype=torch.float64).mm(RSI)
+    # RMI = torch.tensor([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]], dtype=torch.float64).mm(RSI)
+    # RSI = torch.tensor([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]], dtype=torch.float64).mm(RSI)
+    RMI = torch.tensor([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]],dtype=torch.float64).mm(RSI)
+    # RMI = torch.tensor([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]], dtype=torch.float64).mm(RSI)
     print(RMI)
     RIS = rotation_matrix[1]
     RSB = RMI.matmul(RIS).t()
