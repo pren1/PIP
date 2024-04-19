@@ -38,8 +38,8 @@ def return_data():
     rotation_matrix = torch.tensor(rotation_matrix)
     acceleration_rotated = torch.tensor(acceleration_data, dtype=torch.float64)
     acceleration_rotated = acceleration_rotated.view(-1, 3)
-    # acceleration_rotated = np.einsum('ijk,ik->ij', rotation_matrix, acceleration_rotated)
-    # acceleration_rotated = torch.tensor(acceleration_rotated, dtype=torch.float64)
+    acceleration_rotated = np.einsum('ijk,ik->ij', rotation_matrix, acceleration_rotated)
+    acceleration_rotated = torch.tensor(acceleration_rotated, dtype=torch.float64)
     return acceleration_rotated, rotation_matrix
     pdb.set_trace()
 
