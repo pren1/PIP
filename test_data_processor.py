@@ -104,14 +104,15 @@ def combine_all():
     # Create a tensor of zeros with the desired shape [950, 6, 3]
     zeros_aM = torch.zeros(sequence_length, 6, 3)
 
+    POI_index = 0
     # Place the values of aM at the specified index (1) along the second dimension
-    zeros_aM[:, 1, :] = aM
+    zeros_aM[:, POI_index, :] = aM
 
     # Create a tensor filled with identity matrices
     eye_RMB = torch.eye(3).repeat(sequence_length, 6, 1, 1)
 
     # Replace the matrices at index 1 with RMB
-    eye_RMB[:, 1, :, :] = RMB
+    eye_RMB[:, POI_index, :, :] = RMB
 
     # Create an identity matrix of size [3, 3]
     eye_matrix = torch.eye(3)
