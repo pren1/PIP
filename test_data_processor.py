@@ -90,11 +90,12 @@ def tpose_calibration(rotation_matrix):
     RMI = torch.tensor([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]],dtype=torch.float64).mm(RSI)
     # RMI = torch.tensor([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]], dtype=torch.float64).mm(RSI)
     print(RMI)
-    RIS = rotation_matrix[1]
+    # RIS = rotation_matrix[1]
+    RIS = rotation_matrix[0]
     RSB = RMI.matmul(RIS).t()
     return RMI, RSB
 
-def combine_all():
+def combine_all_offline():
     aI, RIS = return_data()
     RMI, RSB = tpose_calibration(RIS)
     RMB = RMI.matmul(RIS).matmul(RSB)
