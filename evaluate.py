@@ -109,7 +109,7 @@ def test_case(net):
     pose_p_list.append(pose_p)
     tran_p_list.append(tran_p)
     torch.save({'acc': [], 'ori': [], 'pose': pose_p_list, 'tran': tran_p_list},
-           os.path.join(paths.dipimu_dir, 'test_case_3.pt'))
+           os.path.join(paths.dipimu_dir, 'test_case_4.pt'))
     print("Data saved!")
 
 def run_pipeline(net, data_dir, sequence_ids=None):

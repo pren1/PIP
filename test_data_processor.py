@@ -3,11 +3,45 @@ import pandas as pd
 import numpy as np
 import time
 import torch
+import pickle
+import pdb
+from scipy.spatial.transform import Rotation
+
+def load_pickle(file_path):
+    with open(file_path, 'rb') as file:
+        data = pickle.load(file)
+    return data
+
+def q_to_rot(quaternion):
+    # 使用scipy库中的Rotation类来处理四元数
+    r = Rotation.from_quat(quaternion)
+
+    # 将四元数转换为旋转矩阵
+    rotation_matrix = r.as_matrix()
+    return rotation_matrix
 
 def return_data():
     # Replace 'your_file.csv' with the path to your CSV file
     # file_path = "data/test_data/trail_9_RoNIN_input.csv"
-    file_path = "data/test_data/trail_12_RoNIN_input.csv"
+    # file_path = "data/test_data/trail_12_RoNIN_input.csv"
+    root_path = "/Users/pren1/PycharmProjects/Socket_handler/data/"
+    acceleration_path = root_path + "total_acceleration_3000.pkl"
+    rotation_path = root_path + "total_orientation_3000.pkl"
+
+    acceleration_data = load_pickle(acceleration_path)
+    rotation_data = load_pickle(rotation_path)
+
+    rotation_matrix = []
+    for quat in rotation_data:
+        rotation_matrix.append(q_to_rot(quat[0]))
+
+    rotation_matrix = torch.tensor(rotation_matrix)
+    acceleration_rotated = torch.tensor(acceleration_data, dtype=torch.float64)
+    acceleration_rotated = acceleration_rotated.view(-1, 3)
+    return acceleration_rotated, rotation_matrix
+    pdb.set_trace()
+
+
 
     # Define column names based on the structure you provided
     column_names = ['gyro_x', 'gyro_y', 'gyro_z',
