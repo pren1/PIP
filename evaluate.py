@@ -257,6 +257,10 @@ if __name__ == '__main__':
     SV = SMPLVisualizer()
 
     for i in range(len(acceleration_data)):
+        if i % 3 != 0:
+            'Down-Sampling'
+            continue
+
         cur_acceleration = acceleration_data[i]
         cur_rotation = rotation_data[i]
 
@@ -265,7 +269,7 @@ if __name__ == '__main__':
         pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
         SV.visualize_smpl_with_tensors(pose, trans)
 
-    SV.post_vis_act()
+    # SV.post_vis_act()
 
     # test_case(net)
     # resave_estimated_results(paths.dipimu_dir)
