@@ -72,15 +72,16 @@ class OnlineProcess:
         # Repeat this matrix 24 times and reshape to get the desired shape [1, 24, 3, 3]
         return eye_matrix.repeat(24, 1).view(1, 24, 3, 3)
 
-    def tpose_calibration(self, rotation_matrix):
-        RSI = rotation_matrix[0].view(3, 3).t()
+    def tpose_calibration(self, rotation_matrix, target_index):
+        RSI = rotation_matrix[target_index, :, :].view(3, 3).t()
         'This is suitable for our own sensor!'
         RMI = torch.tensor([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]], dtype=torch.float64).mm(RSI)
         # RMI = torch.tensor([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]], dtype=torch.float64).mm(RSI)
         print(RMI)
-        'I changed this from 1 to 0, since I think it does not make any difference'
-        RIS = rotation_matrix[0]
-        RSB = RMI.matmul(RIS).t()
+        'Notice that here you should input the whole rotation matrix of all sensors'
+        RIS = rotation_matrix
+        RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3, dtype=torch.float64))  # = (R_MI R_IS)^T R_MB = R_SB
+        # RSB = RMI.matmul(RIS).t()
         return RMI, RSB
 
     def new_data_available(self, acceleration_rotated, quaternion, index_pack):
@@ -93,8 +94,8 @@ class OnlineProcess:
             self.is_calibrated = True
             'Notice that here the rotation matrix should from the left hand sensor'
             target_index = index_pack.index(0)
-            self.RMI, self.RSB = self.tpose_calibration([RIS[target_index, :, :]])
-
+            # target_index = 0
+            self.RMI, self.RSB = self.tpose_calibration(RIS, target_index)
         RMB = self.RMI.matmul(RIS).matmul(self.RSB)
         aM = aI.mm(self.RMI.t())
 

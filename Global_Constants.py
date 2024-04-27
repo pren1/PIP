@@ -1,1 +1,1 @@
-Total_sensor_num = 1
+Total_sensor_num = 2
