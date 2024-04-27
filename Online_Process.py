@@ -7,6 +7,7 @@ import pickle
 import pdb
 from scipy.spatial.transform import Rotation
 from test_data_processor import combine_all_offline
+from Global_Constants import Total_sensor_num
 
 def load_pickle(file_path):
     with open(file_path, 'rb') as file:
@@ -23,7 +24,9 @@ def q_to_rot(quaternion):
     return rotation_matrix
 
 def process_acceleration_and_rotation_raw_data(acceleration_data, quaternion):
-    rotation_matrix = q_to_rot(quaternion[0])
+    rotation_matrix = []
+    for single_quaternion in quaternion:
+        rotation_matrix.append(q_to_rot(single_quaternion))
     rotation_matrix = torch.tensor(rotation_matrix)
     rotation_matrix = rotation_matrix.view(-1, 3, 3)
 
@@ -80,14 +83,17 @@ class OnlineProcess:
         RSB = RMI.matmul(RIS).t()
         return RMI, RSB
 
-    def new_data_available(self, acceleration_rotated, quaternion):
+    def new_data_available(self, acceleration_rotated, quaternion, index_pack):
         aI, RIS = process_acceleration_and_rotation_raw_data(acceleration_rotated, quaternion)
-        assert aI.shape == (1, 3), "Fatal error, check your acceleration"
-        assert RIS.shape == (1, 3, 3), "Fatal error, check your rotation matrix"
+        assert aI.shape == (Total_sensor_num, 3), "Fatal error, check your acceleration"
+        assert RIS.shape == (Total_sensor_num, 3, 3), "Fatal error, check your rotation matrix"
+        assert len(index_pack) == Total_sensor_num, "Fatal error, check your index pack"
         if not self.is_calibrated:
             print("Doing Calibration")
             self.is_calibrated = True
-            self.RMI, self.RSB = self.tpose_calibration(RIS)
+            'Notice that here the rotation matrix should from the left hand sensor'
+            target_index = index_pack.index(0)
+            self.RMI, self.RSB = self.tpose_calibration([RIS[target_index, :, :]])
 
         RMB = self.RMI.matmul(RIS).matmul(self.RSB)
         aM = aI.mm(self.RMI.t())
@@ -95,15 +101,22 @@ class OnlineProcess:
         # Create a tensor of zeros with the desired shape [950, 6, 3]
         zeros_aM = torch.zeros(1, 6, 3)
 
-        POI_index = 0
-        # Place the values of aM at the specified index (1) along the second dimension
-        zeros_aM[:, POI_index, :] = aM
-
         # Create a tensor filled with identity matrices
         eye_RMB = torch.eye(3).repeat(1, 6, 1, 1)
 
-        # Replace the matrices at index 1 with RMB
-        eye_RMB[:, POI_index, :, :] = RMB
+        'Important: Here we make sure each sensor is assigned to a correct place'
+        'For example the sensor AVA will be assigned to the head position since its POI_index is 4'
+        for index, POI_index in enumerate(index_pack):
+            # Place the values of aM at the specified index along the second dimension
+            zeros_aM[:, POI_index, :] = aM[index, :]
+            eye_RMB[:, POI_index, :, :] = RMB[index, :, :]
+
+        # POI_index = 0
+        # # Place the values of aM at the specified index (1) along the second dimension
+        # zeros_aM[:, POI_index, :] = aM
+        #
+        # # Replace the matrices at index 1 with RMB
+        # eye_RMB[:, POI_index, :, :] = RMB
 
         return zeros_aM, eye_RMB
 

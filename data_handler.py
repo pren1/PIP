@@ -21,9 +21,11 @@ class data_handler(object):
         self.save_counter = 0
         self.total_acceleration = []
         self.total_orientation = []
-
+        # Todo: This process needs to be modified so it can handle 6 imus instead of only 1
         self.OP = OnlineProcess()
+        # Todo: You should run self.net on the remote server
         self.net = PIP()
+        # Todo: this is simple, we collect data and run self.sv locally
         self.SV = SMPLVisualizer()
 
     def new_data_available(self, input_data: SensorData):
@@ -58,10 +60,12 @@ class data_handler(object):
     def pack_data(self):
         acceleration_pack = []
         rotation_matrix_pack = []
+        index_pack = [] # This saves the corresponding index that each should put in
 
         for key in self.sensor_stack:
             acceleration_pack.append(self.sensor_stack[key]['Acceleration'][-1])
             rotation_matrix_pack.append(self.sensor_stack[key]['Rotation'][-1])
+            index_pack.append(Name_to_POI_index(key))
 
         Sign = 'Pos'
         if acceleration_pack[-1][2] < 0:
@@ -72,9 +76,10 @@ class data_handler(object):
 
         self.save_counter += 1
         if self.save_counter % 3 == 0:
-            zeros_aM, eye_RMB = self.OP.new_data_available(acceleration_pack, rotation_matrix_pack)
-            pose, trans =self. net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
+            zeros_aM, eye_RMB = self.OP.new_data_available(acceleration_pack, rotation_matrix_pack, index_pack)
+            pose, trans =self.net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
             pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
+            'Now you can send pose & trans back to your local machine and visualize them'
             self.SV.visualize_smpl_with_tensors(pose, trans)
 
         # 'Save the data after every 10 seconds...'
