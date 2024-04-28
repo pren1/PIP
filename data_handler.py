@@ -75,7 +75,7 @@ class data_handler(object):
         self.total_orientation.append(rotation_matrix_pack)
 
         self.save_counter += 1
-        if self.save_counter % 3 == 0:
+        if self.save_counter % 10 == 0:
             zeros_aM, eye_RMB = self.OP.new_data_available(acceleration_pack, rotation_matrix_pack, index_pack)
             pose, trans =self.net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
             pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
