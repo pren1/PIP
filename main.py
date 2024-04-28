@@ -46,7 +46,9 @@ class Socket_Handler(object):
                     start_time = current_time
 
 if __name__ == "__main__":
-    server_host = 'localhost'  # Server's IP address
+    # server_host = 'localhost'  # Server's IP address
+    # server_port = 9901  # Port on which server is listening
+    server_host = '0.0.0.0'  # Server's IP address
     server_port = 9901  # Port on which server is listening
     SH = Socket_Handler(server_host, server_port)
     SH.connect_to_server()
