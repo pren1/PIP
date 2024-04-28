@@ -7,7 +7,7 @@ from net import PIP
 import pdb
 # from test_data_processor import combine_all
 from Online_Process import *
-from SMPLVisualizer import SMPLVisualizer
+# from SMPLVisualizer import SMPLVisualizer
 
 class data_handler(object):
     def __init__(self, Total_sensor_num):
@@ -25,10 +25,10 @@ class data_handler(object):
         self.OP = OnlineProcess()
         # Todo: You should run self.net on the remote server
         self.net = PIP()
-        # Todo: this is simple, we collect data and run self.sv locally
-        self.SV = SMPLVisualizer()
+        # # Todo: this is simple, we collect data and run self.sv locally
+        # self.SV = SMPLVisualizer()
 
-    def new_data_available(self, input_data: SensorData):
+    def new_data_available(self, input_data: SensorData, client_socket):
         udp_address = input_data.udp_address
         data = input_data.data
         type = input_data.type
@@ -53,11 +53,11 @@ class data_handler(object):
         self.new_data_register[self.address_dict[f"{udp_address}_{type}"]] = True
         if sum(self.new_data_register) == self.size:
             # Time to ship your data!
-            self.pack_data()
+            self.pack_data(client_socket)
             'Set all bits to False'
             self.new_data_register = [False for i in range(self.size)]
 
-    def pack_data(self):
+    def pack_data(self, client_socket):
         acceleration_pack = []
         rotation_matrix_pack = []
         index_pack = [] # This saves the corresponding index that each should put in
@@ -75,12 +75,15 @@ class data_handler(object):
         self.total_orientation.append(rotation_matrix_pack)
 
         self.save_counter += 1
-        if self.save_counter % 10 == 0:
+        # Todo: make sure you change the frequency back when on GPU
+        if self.save_counter % 1 == 0:
             zeros_aM, eye_RMB = self.OP.new_data_available(acceleration_pack, rotation_matrix_pack, index_pack)
-            pose, trans =self.net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
+            pose, trans = self.net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
             pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
-            'Now you can send pose & trans back to your local machine and visualize them'
-            self.SV.visualize_smpl_with_tensors(pose, trans)
+            self.send_data(client_socket, pose, trans)
+            pdb.set_trace()
+            # 'Now you can send pose & trans back to your local machine and visualize them'
+            # self.SV.visualize_smpl_with_tensors(pose, trans)
 
         # 'Save the data after every 10 seconds...'
         # if self.save_counter % 1000 == 0:
@@ -100,3 +103,16 @@ class data_handler(object):
     def save_data_to_pkl(self, data, filename):
         with open(filename, 'wb') as file:
             pickle.dump(data, file)
+
+    def send_data(self, client_socket, pose, trans):
+        # Serialize the data using pickle
+        data = {'pose': pose, 'trans': trans}
+        serialized_data = pickle.dumps(data)
+
+        # Send the size of the serialized data first
+        client_socket.sendall(len(serialized_data).to_bytes(4, 'big'))
+
+        # Send the actual data
+        client_socket.sendall(serialized_data)
+        # print("Data sent to the client.")
+

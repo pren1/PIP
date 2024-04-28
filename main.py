@@ -40,7 +40,7 @@ class SocketHandler:
                 print(f"Decode error: {data.decode()}")
                 continue
             print(processed_data)
-            self.data_handler.new_data_available(processed_data)
+            self.data_handler.new_data_available(processed_data, client_socket)
             data_processed += 1
 
             current_time = time.time()
