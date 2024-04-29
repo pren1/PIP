@@ -11,7 +11,17 @@ import numpy as np
 
 # Assuming data_handler is a class you've defined elsewhere that handles sensor data
 data_handler = data_handler(Total_sensor_num=Total_sensor_num)
+clients = {}
+async def register_client(websocket):
+    # Initial message from client to identify type (sender or receiver)
+    message = await websocket.recv()
+    client_info = json.loads(message)
+    client_type = client_info['client_type']
+    clients[client_type] = websocket
+    print("Client type is {}".format(client_type))
 async def websocket_server(websocket, path):
+    await register_client(websocket)
+    sending_client = None
     try:
         async for message in websocket:
             # print(f"message: {message}")
@@ -30,7 +40,10 @@ async def websocket_server(websocket, path):
             else:
                 assert False, "Unsupported data type"
             print(f"Received {data_type} data from sensor {udp_address}: {sensor_data}")
-            data_handler.new_data_available(processed_data)
+
+            if not sending_client and "receiver" in clients:
+                sending_client = clients["receiver"]
+            await data_handler.new_data_available(processed_data, sending_client)
     except websockets.exceptions.ConnectionClosed:
         print("Connection closed")
 

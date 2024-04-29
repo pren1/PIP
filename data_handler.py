@@ -8,6 +8,7 @@ import pdb
 # from test_data_processor import combine_all
 from Online_Process import *
 from SMPLVisualizer import SMPLVisualizer
+import json
 
 class data_handler(object):
     def __init__(self, Total_sensor_num):
@@ -26,9 +27,9 @@ class data_handler(object):
         # Todo: You should run self.net on the remote server
         self.net = PIP()
         # # Todo: this is simple, we collect data and run self.sv locally
-        self.SV = SMPLVisualizer()
+        # self.SV = SMPLVisualizer()
 
-    def new_data_available(self, input_data: SensorData):
+    async def new_data_available(self, input_data: SensorData, sending_client):
         udp_address = input_data.udp_address
         data = input_data.data
         type = input_data.type
@@ -52,12 +53,12 @@ class data_handler(object):
         self.sensor_stack[udp_address][type].append(data)
         self.new_data_register[self.address_dict[f"{udp_address}_{type}"]] = True
         if sum(self.new_data_register) == self.size:
-            # Time to ship your data!
-            self.pack_data()
             'Set all bits to False'
             self.new_data_register = [False for i in range(self.size)]
+            # Time to ship your data!
+            await self.pack_data(sending_client)
 
-    def pack_data(self):
+    async def pack_data(self, sending_client):
         acceleration_pack = []
         rotation_matrix_pack = []
         index_pack = [] # This saves the corresponding index that each should put in
@@ -80,8 +81,10 @@ class data_handler(object):
             zeros_aM, eye_RMB = self.OP.new_data_available(acceleration_pack, rotation_matrix_pack, index_pack)
             pose, trans = self.net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
             pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
+            my_data = {'pose': "pose", 'trans': "trans"}
+            await sending_client.send(json.dumps(my_data))
             # 'Now you can send pose & trans back to your local machine and visualize them'
-            self.SV.visualize_smpl_with_tensors(pose, trans)
+            # self.SV.visualize_smpl_with_tensors(pose, trans)
 
         # 'Save the data after every 10 seconds...'
         # if self.save_counter % 1000 == 0:
