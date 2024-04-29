@@ -7,7 +7,7 @@ from net import PIP
 import pdb
 # from test_data_processor import combine_all
 from Online_Process import *
-# from SMPLVisualizer import SMPLVisualizer
+from SMPLVisualizer import SMPLVisualizer
 
 class data_handler(object):
     def __init__(self, Total_sensor_num):
@@ -26,7 +26,7 @@ class data_handler(object):
         # Todo: You should run self.net on the remote server
         self.net = PIP()
         # # Todo: this is simple, we collect data and run self.sv locally
-        # self.SV = SMPLVisualizer()
+        self.SV = SMPLVisualizer()
 
     def new_data_available(self, input_data: SensorData, client_socket):
         udp_address = input_data.udp_address
@@ -80,10 +80,10 @@ class data_handler(object):
             zeros_aM, eye_RMB = self.OP.new_data_available(acceleration_pack, rotation_matrix_pack, index_pack)
             pose, trans = self.net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
             pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
-            self.send_data(client_socket, pose, trans)
-            pdb.set_trace()
+            # self.send_data(client_socket, pose, trans)
+            # pdb.set_trace()
             # 'Now you can send pose & trans back to your local machine and visualize them'
-            # self.SV.visualize_smpl_with_tensors(pose, trans)
+            self.SV.visualize_smpl_with_tensors(pose, trans)
 
         # 'Save the data after every 10 seconds...'
         # if self.save_counter % 1000 == 0:
@@ -105,14 +105,20 @@ class data_handler(object):
             pickle.dump(data, file)
 
     def send_data(self, client_socket, pose, trans):
-        # Serialize the data using pickle
-        data = {'pose': pose, 'trans': trans}
-        serialized_data = pickle.dumps(data)
+        # Convert tensors to a string
+        pose_string = ' '.join(map(str, pose.tolist()[0]))  # Flatten pose and convert to space-separated string
+        trans_string = ' '.join(map(str, trans.tolist()))  # Convert trans to space-separated string
 
-        # Send the size of the serialized data first
-        client_socket.sendall(len(serialized_data).to_bytes(4, 'big'))
+        # Combine both strings with a delimiter
+        data = pose_string + '|' + trans_string
+
+        # Convert the combined string to bytes
+        data_bytes = data.encode()
+
+        # Send the size of the data first
+        # client_socket.sendall(len(data_bytes).to_bytes(4, 'big'))
 
         # Send the actual data
-        client_socket.sendall(serialized_data)
-        # print("Data sent to the client.")
+        client_socket.sendall(data_bytes)
+        print("Data sent to the client.")
 

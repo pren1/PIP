@@ -4,30 +4,39 @@ from util import *
 from Global_Constants import *
 from data_handler import data_handler
 import time
-
+import numpy as np
 
 class SocketHandler:
     def __init__(self, host: str, port: int):
         self.host = host  # IP address where the server will listen
         self.port = port  # Port on which the server is listening
-
+        self.back_port = port + 1
         # Assuming data_handler is a class you've defined elsewhere that handles sensor data
         self.data_handler = data_handler(Total_sensor_num=Total_sensor_num)
+
+        # Create socket instances for both primary and secondary ports
+        self.secondary_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def start_server(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             server_socket.bind((self.host, self.port))  # Bind to the specified host and port
+            self.secondary_socket.bind((self.host, self.back_port))
+            self.secondary_socket.listen()
             server_socket.listen()  # Listen for incoming connections
-            print(f"Server is running on {self.host}:{self.port}")
+            print(f"Server is running on {self.host}:{self.port}, {self.back_port}")
+
 
             while True:
                 client_socket, addr = server_socket.accept()  # Accept a new connection
                 print(f"Connected to client {addr}")
 
-                with client_socket:
-                    self.handle_client(client_socket)
+                second_client_socket, second_addr = self.secondary_socket.accept()  # Accept a new connection
+                print(f"Connected to client {second_addr}")
 
-    def handle_client(self, client_socket):
+                with client_socket and second_client_socket:
+                    self.handle_client(client_socket, second_client_socket)
+
+    def handle_client(self, client_socket, second_client_socket):
         data_processed = 0
         start_time = time.time()
 
@@ -40,7 +49,8 @@ class SocketHandler:
                 print(f"Decode error: {data.decode()}")
                 continue
             print(processed_data)
-            self.data_handler.new_data_available(processed_data, client_socket)
+            # self.data_handler.send_data(second_client_socket, np.asarray([[1,2,3,4,5,6,7]]), np.asarray([0,0,0]))
+            self.data_handler.new_data_available(processed_data, second_client_socket)
             data_processed += 1
 
             current_time = time.time()
