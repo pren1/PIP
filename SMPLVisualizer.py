@@ -26,7 +26,6 @@ class SMPLVisualizer():
             # Setup the Open3D visualizer
             self.vis = o3d.visualization.Visualizer()
             self.vis.create_window()
-
             # Initial mesh setup
             output = self.smpl(body_pose=pose[3:].unsqueeze(0), global_orient=pose[:3].unsqueeze(0), transl=trans.unsqueeze(0))
             vertices = output.vertices.detach().cpu().numpy().squeeze()

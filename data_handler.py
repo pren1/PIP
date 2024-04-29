@@ -7,7 +7,7 @@ from net import PIP
 import pdb
 # from test_data_processor import combine_all
 from Online_Process import *
-from SMPLVisualizer import SMPLVisualizer
+
 import json
 
 class data_handler(object):
@@ -27,7 +27,7 @@ class data_handler(object):
         # Todo: You should run self.net on the remote server
         self.net = PIP()
         # # Todo: this is simple, we collect data and run self.sv locally
-        # self.SV = SMPLVisualizer()
+
 
     async def new_data_available(self, input_data: SensorData, sending_client):
         udp_address = input_data.udp_address
@@ -81,10 +81,10 @@ class data_handler(object):
             zeros_aM, eye_RMB = self.OP.new_data_available(acceleration_pack, rotation_matrix_pack, index_pack)
             pose, trans = self.net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
             pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
-            my_data = {'pose': "pose", 'trans': "trans"}
+            my_data = {'pose': pose.numpy().tolist()[0], 'trans': trans.numpy().tolist()}
             await sending_client.send(json.dumps(my_data))
             # 'Now you can send pose & trans back to your local machine and visualize them'
-            # self.SV.visualize_smpl_with_tensors(pose, trans)
+            #
 
         # 'Save the data after every 10 seconds...'
         # if self.save_counter % 1000 == 0:
