@@ -28,7 +28,7 @@ class data_handler(object):
         # # Todo: this is simple, we collect data and run self.sv locally
         self.SV = SMPLVisualizer()
 
-    def new_data_available(self, input_data: SensorData, client_socket):
+    def new_data_available(self, input_data: SensorData):
         udp_address = input_data.udp_address
         data = input_data.data
         type = input_data.type
@@ -53,11 +53,11 @@ class data_handler(object):
         self.new_data_register[self.address_dict[f"{udp_address}_{type}"]] = True
         if sum(self.new_data_register) == self.size:
             # Time to ship your data!
-            self.pack_data(client_socket)
+            self.pack_data()
             'Set all bits to False'
             self.new_data_register = [False for i in range(self.size)]
 
-    def pack_data(self, client_socket):
+    def pack_data(self):
         acceleration_pack = []
         rotation_matrix_pack = []
         index_pack = [] # This saves the corresponding index that each should put in
@@ -76,12 +76,10 @@ class data_handler(object):
 
         self.save_counter += 1
         # Todo: make sure you change the frequency back when on GPU
-        if self.save_counter % 1 == 0:
+        if self.save_counter % 5 == 0:
             zeros_aM, eye_RMB = self.OP.new_data_available(acceleration_pack, rotation_matrix_pack, index_pack)
             pose, trans = self.net.new_data_available(zeros_aM, eye_RMB, self.OP.init_pose)
             pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
-            # self.send_data(client_socket, pose, trans)
-            # pdb.set_trace()
             # 'Now you can send pose & trans back to your local machine and visualize them'
             self.SV.visualize_smpl_with_tensors(pose, trans)
 
