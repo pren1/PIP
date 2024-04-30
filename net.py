@@ -18,6 +18,9 @@ class PIP(torch.nn.Module):
         self.lj_init = None
         self.jvel_init = None
 
+        # Check if GPU is available and set the default device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         # This class is defined by the author,
         # It takes extra input to calculate initial states using a fully-connected layer inside
 
@@ -31,7 +34,7 @@ class PIP(torch.nn.Module):
                                 hidden_size=self.n_hidden,
                                 num_rnn_layer=2,
                                 simplified=self.simplified,
-                                dropout=0.4)
+                                dropout=0.4).to(self.device)
 
         # Then the input & output of the above model are used as input here.
         # Output is 24 joint positions, each has 3 dimension
@@ -40,7 +43,7 @@ class PIP(torch.nn.Module):
                         hidden_size=self.n_hidden,
                         num_rnn_layer=2,
                         simplified=self.simplified,
-                        dropout=0.4)
+                        dropout=0.4).to(self.device)
 
         # Then the input & output of the above model, used again as input here...
         # Output is the joint rotations, in 6d version. You should (I think) Use pose to get the corresponding
@@ -50,7 +53,7 @@ class PIP(torch.nn.Module):
                         hidden_size=self.n_hidden,
                         num_rnn_layer=2,
                         simplified=self.simplified,
-                        dropout=0.4)
+                        dropout=0.4).to(self.device)
 
         # Then, also this model it predicts
         self.rnn4 = RNNWithInit(input_size=72 + joint_set.n_full * 3,
@@ -58,13 +61,14 @@ class PIP(torch.nn.Module):
                                 hidden_size=self.n_hidden,
                                 num_rnn_layer=2,
                                 simplified=self.simplified,
-                                dropout=0.4)
+                                dropout=0.4).to(self.device)
+
         self.rnn5 = RNN(input_size=72 + joint_set.n_full * 3,
                         output_size=2,
                         hidden_size=64,
                         num_rnn_layer=2,
                         simplified=self.simplified,
-                        dropout=0.4)
+                        dropout=0.4).to(self.device)
 
         body_model = art.ParametricModel(paths.smpl_file)
         # From global rotation to local rotation
@@ -231,35 +235,65 @@ class PIP(torch.nn.Module):
 
     @torch.no_grad()
     def new_data_available(self, glb_acc, glb_rot, init_pose):
-
         if not self.is_initialized:
             self.is_initialized = True
             self.dynamics_optimizer.reset_states()
             init_pose = init_pose.view(1, 24, 3, 3)
             init_pose[0, 0] = torch.eye(3)
-            # self.forward_kinematics(init_pose)[1], this returns the joint position
-            # Then we select the leaf points at index 0 (actually the first dim is always 1, as we can see in init_pose)
-            self.lj_init = self.forward_kinematics(init_pose)[1][0, joint_set.leaf].view(-1)
-            # Seems that for velocity initialization, you got all zeros as input...
-            self.jvel_init = torch.zeros(24 * 3)
+            self.lj_init = self.forward_kinematics(init_pose)[1][0, joint_set.leaf].view(-1).cuda()
+            self.jvel_init = torch.zeros(24 * 3).cuda()
 
-        # acc = glb_acc.unsqueeze(0)
-        # rot = glb_rot.unsqueeze(0)
-        acc = glb_acc
-        rot = glb_rot
-        frame = normalize_and_concat(acc, rot).squeeze()
-        leaf_joint = self.rnn1(list([frame, self.lj_init]))
+        # Ensure glb_acc and glb_rot are on GPU
+        acc = glb_acc.cuda()
+        rot = glb_rot.cuda()
+        frame = normalize_and_concat(acc, rot).squeeze().cuda()
+        leaf_joint = self.rnn1([frame, self.lj_init])
         full_joint = self.rnn2(torch.cat((leaf_joint, frame), dim=0))
         global_6d_pose = self.rnn3(torch.cat((full_joint, frame), dim=0))
-        # Linear velocities
-        joint_velocity = self.rnn4(list([torch.cat((full_joint, frame), dim=0), self.jvel_init]))
-        # Foot ground contact probability
+        joint_velocity = self.rnn4([torch.cat((full_joint, frame), dim=0), self.jvel_init])
         contact = self.rnn5(torch.cat((full_joint, frame), dim=0))
-        # What's the shape of glb_rot
-        # glb_rot.view(-1, 6, 3, 3)[:, -1] means you get the last root rotation matrix from 6. It's second dimension!
-        pose = self._reduced_glb_6d_to_full_local_mat(rot.view(-1, 6, 3, 3)[:, -1], global_6d_pose)
-        # Notice: removed vel_scale
-        joint_velocity = joint_velocity.view(-1, 24, 3).bmm(rot[:, -1].transpose(1, 2)) * 1
-        step_p, step_t = self.dynamics_optimizer.optimize_frame(pose.squeeze(), joint_velocity.squeeze(),
+        pose = self._reduced_glb_6d_to_full_local_mat(rot.cpu().view(-1, 6, 3, 3)[:, -1], global_6d_pose.cpu())
+        joint_velocity = joint_velocity.cpu().view(-1, 24, 3).bmm(rot[:, -1].transpose(1, 2).cpu()) * 1
+
+        # Convert pose and joint_velocity back to CPU as needed
+        pose_cpu = pose
+        joint_velocity_cpu = joint_velocity
+        step_p, step_t = self.dynamics_optimizer.optimize_frame(pose_cpu.squeeze(), joint_velocity_cpu.squeeze(),
                                                                 contact.cpu(), acc.cpu().squeeze())
+
         return step_p, step_t
+
+    # @torch.no_grad()
+    # def new_data_available(self, glb_acc, glb_rot, init_pose):
+    #
+    #     if not self.is_initialized:
+    #         self.is_initialized = True
+    #         self.dynamics_optimizer.reset_states()
+    #         init_pose = init_pose.view(1, 24, 3, 3)
+    #         init_pose[0, 0] = torch.eye(3)
+    #         # self.forward_kinematics(init_pose)[1], this returns the joint position
+    #         # Then we select the leaf points at index 0 (actually the first dim is always 1, as we can see in init_pose)
+    #         self.lj_init = self.forward_kinematics(init_pose)[1][0, joint_set.leaf].view(-1)
+    #         # Seems that for velocity initialization, you got all zeros as input...
+    #         self.jvel_init = torch.zeros(24 * 3)
+    #
+    #     # acc = glb_acc.unsqueeze(0)
+    #     # rot = glb_rot.unsqueeze(0)
+    #     acc = glb_acc
+    #     rot = glb_rot
+    #     frame = normalize_and_concat(acc, rot).squeeze()
+    #     leaf_joint = self.rnn1(list([frame, self.lj_init]))
+    #     full_joint = self.rnn2(torch.cat((leaf_joint, frame), dim=0))
+    #     global_6d_pose = self.rnn3(torch.cat((full_joint, frame), dim=0))
+    #     # Linear velocities
+    #     joint_velocity = self.rnn4(list([torch.cat((full_joint, frame), dim=0), self.jvel_init]))
+    #     # Foot ground contact probability
+    #     contact = self.rnn5(torch.cat((full_joint, frame), dim=0))
+    #     # What's the shape of glb_rot
+    #     # glb_rot.view(-1, 6, 3, 3)[:, -1] means you get the last root rotation matrix from 6. It's second dimension!
+    #     pose = self._reduced_glb_6d_to_full_local_mat(rot.view(-1, 6, 3, 3)[:, -1], global_6d_pose)
+    #     # Notice: removed vel_scale
+    #     joint_velocity = joint_velocity.view(-1, 24, 3).bmm(rot[:, -1].transpose(1, 2)) * 1
+    #     step_p, step_t = self.dynamics_optimizer.optimize_frame(pose.squeeze(), joint_velocity.squeeze(),
+    #                                                             contact.cpu(), acc.cpu().squeeze())
+    #     return step_p, step_t

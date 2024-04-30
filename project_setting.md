@@ -104,3 +104,5 @@ After completing the installation steps, you can run your Python scripts that de
 ```bash
 python3 evaluation.py
 ```
+
+pip3 install websockets

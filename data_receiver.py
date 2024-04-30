@@ -8,7 +8,7 @@ from SMPLVisualizer import SMPLVisualizer
 import torch
 
 async def websocket_client():
-    uri = "ws://8.138.92.240:8765"
+    uri = "ws://8.138.83.250:8765"
     async with websockets.connect(uri) as websocket:
         await websocket.send('{"client_type":"receiver"}')  # Identify as receiver
         SV = SMPLVisualizer()
